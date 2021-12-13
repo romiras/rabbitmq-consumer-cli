@@ -18,6 +18,7 @@ var (
 	exchange     = flag.String("exchange", "test-exchange", "Durable, non-auto-deleted AMQP exchange name")
 	exchangeType = flag.String("exchange-type", "direct", "Exchange type - direct|fanout|topic|x-custom")
 	queue        = flag.String("queue", "test-queue", "Ephemeral AMQP queue name")
+	durable      = flag.Bool("durable", true, "Durability of exchange + queue")
 	bindingKey   = flag.String("key", "test-key", "AMQP binding key")
 	consumerTag  = flag.String("consumer-tag", "simple-consumer", "AMQP consumer tag (should not be blank)")
 	lifetime     = flag.Duration("lifetime", 5*time.Second, "lifetime of process before shutdown (0s=infinite)")
@@ -28,7 +29,7 @@ func init() {
 }
 
 func main() {
-	c, err := NewConsumer(*uri, *exchange, *exchangeType, *queue, *bindingKey, *consumerTag)
+	c, err := NewConsumer(*uri, *exchange, *exchangeType, *queue, *durable, *bindingKey, *consumerTag)
 	if err != nil {
 		log.Fatalf("%s", err)
 	}
@@ -55,7 +56,7 @@ type Consumer struct {
 	done    chan error
 }
 
-func NewConsumer(amqpURI, exchange, exchangeType, queueName, key, ctag string) (*Consumer, error) {
+func NewConsumer(amqpURI, exchange, exchangeType, queueName string, durable bool, key, ctag string) (*Consumer, error) {
 	c := &Consumer{
 		conn:    nil,
 		channel: nil,
@@ -85,7 +86,7 @@ func NewConsumer(amqpURI, exchange, exchangeType, queueName, key, ctag string) (
 	if err = c.channel.ExchangeDeclare(
 		exchange,     // name of the exchange
 		exchangeType, // type
-		true,         // durable
+		durable,      // durable
 		false,        // delete when complete
 		false,        // internal
 		false,        // noWait
@@ -97,7 +98,7 @@ func NewConsumer(amqpURI, exchange, exchangeType, queueName, key, ctag string) (
 	log.Printf("declared Exchange, declaring Queue %q", queueName)
 	queue, err := c.channel.QueueDeclare(
 		queueName, // name of the queue
-		true,      // durable
+		durable,   // durable
 		false,     // delete when unused
 		false,     // exclusive
 		false,     // noWait
